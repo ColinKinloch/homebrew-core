@@ -20,6 +20,14 @@ class Jack < Formula
     sha256 "ee93da9885f06dde0f305fca2d5af6d6213c2133466ca93857a87ffb731ce43f" => :el_capitan
   end
 
+  head do
+    url "https://github.com/jackaudio/jack1.git"
+
+    depends_on "autoconf" => :build
+    depends_on "automake" => :build
+    depends_on "libtool" => :build
+  end
+
   depends_on "pkg-config" => :build
   depends_on "berkeley-db"
   depends_on "libsamplerate"
@@ -28,14 +36,18 @@ class Jack < Formula
   def install
     sdk = MacOS.sdk_path_if_needed ? MacOS.sdk_path : ""
 
+    if build.head?
+      system "./autogen.sh"
+    else
+      # https://github.com/jackaudio/jack1/issues/81
+      inreplace "configure", "-mmacosx-version-min=10.4",
+                             "-mmacosx-version-min=#{MacOS.version}"
+    end
+
     # Makefile hardcodes Carbon header location
     inreplace Dir["drivers/coreaudio/Makefile.{am,in}"],
       "/System/Library/Frameworks/Carbon.framework/Headers/Carbon.h",
       "#{sdk}/System/Library/Frameworks/Carbon.framework/Headers/Carbon.h"
-
-    # https://github.com/jackaudio/jack1/issues/81
-    inreplace "configure", "-mmacosx-version-min=10.4",
-                           "-mmacosx-version-min=#{MacOS.version}"
 
     ENV["LINKFLAGS"] = ENV.ldflags
     system "./configure", "--prefix=#{prefix}"
